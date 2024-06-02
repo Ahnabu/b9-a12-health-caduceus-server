@@ -3,12 +3,23 @@ const cors = require('cors')
 require('dotenv').config();
 const app = express()
 app.use(express.json())
+app.use(
+    cors({
+        origin: [
+            "http://localhost:5173",
+            "b9-a12-health-caduceus.web.app",
+            "b9-a12-health-caduceus.firebaseapp.com",
+           
+        ],
+        credentials: true,
+    })
+);
 
 const port = 5000 || `${process.env.PORT}`
 const { MongoClient, ServerApiVersion } = require('mongodb');
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.cn1yph8.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
-
+ 
  
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -34,7 +45,7 @@ async function run() {
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
     } finally {
         // Ensures that the client will close when you finish/error
-        await client.close();
+        // await client.close();
     }
 }
 run().catch(console.dir);
