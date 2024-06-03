@@ -16,7 +16,7 @@ app.use(
 );
 
 const port = 5000 || `${process.env.PORT}`
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.cn1yph8.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
  
@@ -35,9 +35,16 @@ async function run() {
         // database
         const campCollection =client.db('mediDB').collection('camp')
 
-        //get popular collection
+        // get popular collection
         app.get('/popular', async(req, res) => {
-            const result = await campCollection.find().sort({ ParticipantCount:-1 }).limit(6).toArray()
+            const result = await campCollection.find().sort({ participantCount:-1 }).limit(6).toArray()
+            res.send(result)
+        })
+        // get single card details
+        app.get('/details/:id', async (req, res) => {
+            const id = req.params.id
+            const query = { id: new ObjectId(id) }
+            const result = await campCollection.find(query)
             res.send(result)
         })
         // Send a ping to confirm a successful connection
