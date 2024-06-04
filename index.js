@@ -40,6 +40,11 @@ async function run() {
             const result = await campCollection.find().sort({ participantCount:-1 }).limit(6).toArray()
             res.send(result)
         })
+        // get all available camp collection 
+        app.get('/available-camps', async(req, res) => {
+            const result = await campCollection.find().toArray()
+            res.send(result)
+        })
         // get single card details
         app.get('/details/:id', async (req, res) => {
             const id = req.params.id;
@@ -47,6 +52,7 @@ async function run() {
             const result = await campCollection.findOne(query);
             res.send(result);
         })
+        
         // Send a ping to confirm a successful connection
         await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
