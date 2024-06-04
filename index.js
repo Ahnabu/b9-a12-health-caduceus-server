@@ -33,7 +33,99 @@ const client = new MongoClient(uri, {
 async function run() {
     try {
         // database
-        const campCollection =client.db('mediDB').collection('camp')
+        const campCollection = client.db('mediDB').collection('camp')
+        const userCollection = client.db('mediDB').collection('users')
+        
+
+        // jwt related api
+        app.post('/jwt', async (req, res) => {
+            const user = req.body;
+            const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' });
+            res.send({ token });
+        })
+
+        // middlewares 
+        const verifyToken = (req, res, next) => {
+            // console.log('inside verify token', req.headers.authorization);
+            if (!req.headers.authorization) {
+                return res.status(401).send({ message: 'unauthorized access' });
+            }
+            const token = req.headers.authorization.split(' ')[1];
+            jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+                if (err) {
+                    return res.status(401).send({ message: 'unauthorized access' })
+                }
+                req.decoded = decoded;
+                next();
+            })
+        }
+
+        // use verify Organizer after verifyToken
+        const verifyOrganizer = async (req, res, next) => {
+            const email = req.decoded.email;
+            const query = { email: email };
+            const user = await userCollection.findOne(query);
+            const isOrganizer = user?.role === 'Organizer';
+            if (!isOrganizer) {
+                return res.status(403).send({ message: 'forbidden access' });
+            }
+            next();
+        }
+
+        // users related api
+        app.get('/users', verifyToken, verifyOrganizer, async (req, res) => {
+            const result = await userCollection.find().toArray();
+            res.send(result);
+        });
+
+        app.get('/users/organizer/:email', verifyToken, async (req, res) => {
+            const email = req.params.email;
+
+            if (email !== req.decoded.email) {
+                return res.status(403).send({ message: 'forbidden access' })
+            }
+
+            const query = { email: email };
+            const user = await userCollection.findOne(query);
+            let Organizer = false;
+            if (user) {
+                Organizer = user?.role === 'Organizer';
+            }
+            res.send({ Organizer });
+        })
+
+        app.post('/users', async (req, res) => {
+            const user = req.body;
+            // insert email if user doesnt exists: 
+            // you can do this many ways (1. email unique, 2. upsert 3. simple checking)
+            const query = { email: user.email }
+            const existingUser = await userCollection.findOne(query);
+            if (existingUser) {
+                return res.send({ message: 'user already exists', insertedId: null })
+            }
+            const result = await userCollection.insertOne(user);
+            res.send(result);
+        });
+
+        app.patch('/users/organizer/:id', verifyToken, verifyOrganizer, async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) };
+            const updatedDoc = {
+                $set: {
+                    role: 'Organizer'
+                }
+            }
+            const result = await userCollection.updateOne(filter, updatedDoc);
+            res.send(result);
+        })
+
+        app.delete('/users/:id', verifyToken, verifyOrganizer, async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) }
+            const result = await userCollection.deleteOne(query);
+            res.send(result);
+        })
+
 
         // get popular collection 
         app.get('/popular', async(req, res) => {
@@ -42,13 +134,22 @@ async function run() {
         })
         // get all available camp collection 
         app.get('/available-camps', async (req, res) => {
-            const filter = req.query.filter
+            const sorted = req.query.sort;
+            const  order = req.query.order;
+            const filter = req.query.filter;
+            
             //search functionality
             let query = {}
             if (filter) query = { campName: { $regex: filter, $options: 'i' } }
+            //sort functionality
            
-            const result = await campCollection.find(query).toArray()
+            let sortOrder = {}
+            if (sorted) sortOrder = { [sorted]: order === 'asc'? 1 : -1 }
+            const result = await campCollection.find(query).sort(sortOrder).toArray()
+            
             res.send(result)
+            
+           
         }) 
         // get single card details
         app.get('/details/:id', async (req, res) => {
@@ -59,7 +160,7 @@ async function run() {
         })
         
         // Send a ping to confirm a successful connection
-        await client.db("admin").command({ ping: 1 });
+        await client.db("Organizer").command({ ping: 1 });
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
     } finally {
         // Ensures that the client will close when you finish/error
