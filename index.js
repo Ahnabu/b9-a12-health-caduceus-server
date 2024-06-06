@@ -158,12 +158,13 @@ async function run() {
             res.send(result)
 
 
-        })
+        }) 
         //get all camps for organizer
         app.get('/camps', verifyToken, verifyOrganizer, async (req, res) => {
-            const result = await campCollection.find().toArray();
+            const page =parseFloat(req.query.currentPage) 
+            const result = await campCollection.find().skip(8 * page).limit(8).toArray();
             res.send(result);
-        })
+        }) 
         // delete camp 
         app.delete('/delete/:id', verifyToken, verifyOrganizer, async (req, res) => {
             const id = req.params.id;
@@ -172,6 +173,11 @@ async function run() {
             const result = await campCollection.deleteOne(query);
             res.send(result);
         })
+        //pagination
+        app.get('/camp-count', async (req, res) => {
+            const count = await campCollection.estimatedDocumentCount()
+            res.send({ count });
+        })
         // post new camp
         app.post('/add-camp', verifyToken, verifyOrganizer, async (req, res) => {
             const item = req.body;
@@ -179,9 +185,32 @@ async function run() {
             const result = await campCollection.insertOne(item);
             res.send(result);
         });
+        // update camp
+        app.put('/update-camp/:id', verifyToken, verifyOrganizer, async (req, res) => {
+            const item = req.body;
+            const id = req.params.id;
+            
+            const filter = { _id: new ObjectId(id) }
+           
+            const updatedDoc = {
+                $set: {
+                      healthcareProfessional:item.healthcareProfessional
+                    , location:item.location
+                    , dateTime:item.dateTime
+                    , campFees:item.campFees
+                    , image:item.image
+                    , campName:item.campName
+                    , description:item.description
+                }
+            }
+  
+            const result = await campCollection.updateOne(filter,updatedDoc);
+            res.send(result);
+        });
         // get single card details
         app.get('/details/:id', async (req, res) => {
             const id = req.params.id;
+           
             const query = { _id: new ObjectId(id) }
             const result = await campCollection.findOne(query);
             res.send(result);
