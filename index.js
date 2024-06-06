@@ -159,7 +159,20 @@ async function run() {
 
 
         })
-        // post card
+        //get all camps for organizer
+        app.get('/camps', verifyToken, verifyOrganizer, async (req, res) => {
+            const result = await campCollection.find().toArray();
+            res.send(result);
+        })
+        // delete camp 
+        app.delete('/delete/:id', verifyToken, verifyOrganizer, async (req, res) => {
+            const id = req.params.id;
+            console.log(id);
+            const query = { _id: new ObjectId(id)}
+            const result = await campCollection.deleteOne(query);
+            res.send(result);
+        })
+        // post new camp
         app.post('/add-camp', verifyToken, verifyOrganizer, async (req, res) => {
             const item = req.body;
             
