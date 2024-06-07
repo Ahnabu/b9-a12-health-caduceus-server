@@ -36,6 +36,7 @@ async function run() {
         // database
         const campCollection = client.db('mediDB').collection('camp')
         const userCollection = client.db('mediDB').collection('users')
+        const participantCollection = client.db('mediDB').collection('participant')
 
 
         // jwt related api
@@ -140,6 +141,11 @@ async function run() {
             const result = await campCollection.find().sort({ participantCount: -1 }).limit(6).toArray()
             res.send(result)
         })
+
+
+        //-------------------- camp ----------------------//
+
+
         // get all available camp collection 
         app.get('/available-camps', async (req, res) => {
             const sorted = req.query.sort;
@@ -167,11 +173,11 @@ async function run() {
             
             let query = {}
             if (filter) query = { [sorted]: { $regex: filter, $options: 'i' } }
-            console.log(query);
-            console.log(page);
+           
             const result = await campCollection.find(query).skip(8 * page).limit(8).toArray();
             res.send(result);
         }) 
+        
         // delete camp 
         app.delete('/delete/:id', verifyToken, verifyOrganizer, async (req, res) => {
             const id = req.params.id;
@@ -180,11 +186,12 @@ async function run() {
             const result = await campCollection.deleteOne(query);
             res.send(result);
         })
-        //pagination
+        //pagination manage camp
         app.get('/camp-count', async (req, res) => {
             const count = await campCollection.estimatedDocumentCount()
             res.send({ count });
         })
+      
         // post new camp
         app.post('/add-camp', verifyToken, verifyOrganizer, async (req, res) => {
             const item = req.body;
@@ -222,6 +229,52 @@ async function run() {
             const result = await campCollection.findOne(query);
             res.send(result);
         })
+
+
+
+
+        //-------------- participant  ----------------------//
+
+
+
+        //get all participant for organizer
+        app.get('/participants', async (req, res) => {
+            let page = parseFloat(req.query.currentPage || 0)
+            const filter = req.query.filter
+            const sorted = req.query.sort;
+
+            let query = {}
+            if (filter) query = { [sorted]: { $regex: filter, $options: 'i' } }
+
+            const result = await participantCollection.find(query).skip(8 * page).limit(8).toArray();
+            res.send(result);
+        }) 
+
+        // pagination participant 
+        app.get('/participant-count', async (req, res) => {
+            const count = await participantCollection.estimatedDocumentCount()
+            res.send({ count });
+        })
+
+        // update participant
+        app.put('/update-participant/:id', verifyToken, verifyOrganizer, async (req, res) => {
+            const item = req.body;
+            const id = req.params.id;
+
+            const filter = { _id: new ObjectId(id) }
+
+            const updatedDoc = {
+                $set: {
+                    payment_status:item.payment_status ,
+
+                    confirmation_status:item.confirmation_status
+                }
+            }
+
+            const result = await participantCollection.updateOne(filter, updatedDoc);
+            res.send(result);
+        });
+
 
         // Send a ping to confirm a successful connection
         await client.db("Organizer").command({ ping: 1 });
