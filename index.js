@@ -150,7 +150,7 @@ async function run() {
             let query = {}
             if (filter) query = { campName: { $regex: filter, $options: 'i' } }
             //sort functionality
-
+            console.log(query);
             let sortOrder = {}
             if (sorted) sortOrder = { [sorted]: order === 'asc' ? 1 : -1 }
             const result = await campCollection.find(query).sort(sortOrder).toArray()
@@ -160,9 +160,16 @@ async function run() {
 
         }) 
         //get all camps for organizer
-        app.get('/camps', verifyToken, verifyOrganizer, async (req, res) => {
-            const page =parseFloat(req.query.currentPage) 
-            const result = await campCollection.find().skip(8 * page).limit(8).toArray();
+        app.get('/camps',  async (req, res) => {
+            let page = parseFloat(req.query.currentPage || 0) 
+            const filter = req.query.filter
+            const sorted = req.query.sort; 
+            
+            let query = {}
+            if (filter) query = { [sorted]: { $regex: filter, $options: 'i' } }
+            console.log(query);
+            console.log(page);
+            const result = await campCollection.find(query).skip(8 * page).limit(8).toArray();
             res.send(result);
         }) 
         // delete camp 
