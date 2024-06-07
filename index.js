@@ -203,9 +203,9 @@ async function run() {
         app.put('/update-camp/:id', verifyToken,  async (req, res) => {
             const item = req.body;
             const id = req.params.id;
-            
+            console.log(item);
             const filter = { _id: new ObjectId(id) }
-           
+            const options = { upsert: true };
             const updatedDoc = {
                 $set: {
                       healthcareProfessional:item.healthcareProfessional
@@ -218,7 +218,7 @@ async function run() {
                 }
             }
   
-            const result = await campCollection.updateOne(filter,updatedDoc);
+            const result = await campCollection.updateOne(filter,updatedDoc,options);
             res.send(result);
         });
         // get single card details
@@ -249,6 +249,14 @@ async function run() {
             const result = await participantCollection.find(query).skip(8 * page).limit(8).toArray();
             res.send(result);
         }) 
+
+        //get participant
+        app.get('/participant/:email',verifyToken, async (req, res) => {
+            const email = req.params.email;
+            const query = { email: email };
+            const result = await participantCollection.find(query).toArray();
+            res.send(result);
+        });
 
         //post participant
         app.post('/participants', verifyToken, async (req, res) => {
