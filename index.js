@@ -274,7 +274,14 @@ async function run() {
             const result = await participantCollection.updateOne(filter, updatedDoc);
             res.send(result);
         });
-
+  // delete participant 
+        app.delete('/delete-participant/:id', verifyToken, verifyOrganizer, async (req, res) => {
+            const id = req.params.id;
+            console.log(id);
+            const query = { _id: new ObjectId(id)}
+            const result = await participantCollection.deleteOne(query);
+            res.send(result);
+        })
 
         // Send a ping to confirm a successful connection
         await client.db("Organizer").command({ ping: 1 });
