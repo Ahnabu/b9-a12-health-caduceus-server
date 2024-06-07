@@ -200,7 +200,7 @@ async function run() {
             res.send(result);
         });
         // update camp
-        app.put('/update-camp/:id', verifyToken, verifyOrganizer, async (req, res) => {
+        app.put('/update-camp/:id', verifyToken,  async (req, res) => {
             const item = req.body;
             const id = req.params.id;
             
@@ -249,6 +249,14 @@ async function run() {
             const result = await participantCollection.find(query).skip(8 * page).limit(8).toArray();
             res.send(result);
         }) 
+
+        //post participant
+        app.post('/participants', verifyToken, async (req, res) => {
+            const item = req.body;
+          
+            const result = await participantCollection.insertOne(item);
+            res.send(result);
+        });
 
         // pagination participant 
         app.get('/participant-count', async (req, res) => {
