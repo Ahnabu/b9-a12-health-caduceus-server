@@ -36,6 +36,7 @@ async function run() {
         // database
         const campCollection = client.db('mediDB').collection('camp')
         const userCollection = client.db('mediDB').collection('users')
+        const feedbackCollection = client.db('mediDB').collection('feedback')
         const participantCollection = client.db('mediDB').collection('participant')
 
 
@@ -231,6 +232,21 @@ async function run() {
         })
 
 
+        //-----------------Feedback -------------------//
+
+        //get all feedbacks
+        app.get('/feedback', async (req, res) => {
+            const result = await feedbackCollection.find().toArray();
+            res.send(result);
+        })
+
+
+        //post feedback
+        app.post('/feedback', verifyToken, async (req, res) => {
+            const item = req.body;
+            const result = await feedbackCollection.insertOne(item);
+            res.send(result);
+        });
 
 
         //-------------- participant  ----------------------//
@@ -261,7 +277,6 @@ async function run() {
         //post participant
         app.post('/participants', verifyToken, async (req, res) => {
             const item = req.body;
-          
             const result = await participantCollection.insertOne(item);
             res.send(result);
         });
@@ -273,7 +288,7 @@ async function run() {
         })
 
         // update participant
-        app.put('/update-participant/:id', verifyToken, verifyOrganizer, async (req, res) => {
+        app.put('/update-participant/:id', verifyToken, async (req, res) => {
             const item = req.body;
             const id = req.params.id;
 
