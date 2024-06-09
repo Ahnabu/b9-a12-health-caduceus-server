@@ -15,6 +15,7 @@ app.use(
         credentials: true,
     })
 );
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 const port = 5000 || `${process.env.PORT}`
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
@@ -37,6 +38,7 @@ async function run() {
         const campCollection = client.db('mediDB').collection('camp')
         const userCollection = client.db('mediDB').collection('users')
         const feedbackCollection = client.db('mediDB').collection('feedback')
+        const paymentCollection = client.db('mediDB').collection('payment')
         const participantCollection = client.db('mediDB').collection('participant')
 
 
@@ -157,7 +159,7 @@ async function run() {
             let query = {}
             if (filter) query = { campName: { $regex: filter, $options: 'i' } }
             //sort functionality
-            console.log(query);
+
             let sortOrder = {}
             if (sorted) sortOrder = { [sorted]: order === 'asc' ? 1 : -1 }
             const result = await campCollection.find(query).sort(sortOrder).toArray()
@@ -165,25 +167,25 @@ async function run() {
             res.send(result)
 
 
-        }) 
+        })
         //get all camps for organizer
-        app.get('/camps',  async (req, res) => {
-            let page = parseFloat(req.query.currentPage || 0) 
+        app.get('/camps', async (req, res) => {
+            let page = parseFloat(req.query.currentPage || 0)
             const filter = req.query.filter
-            const sorted = req.query.sort; 
-            
+            const sorted = req.query.sort;
+
             let query = {}
             if (filter) query = { [sorted]: { $regex: filter, $options: 'i' } }
-           
+
             const result = await campCollection.find(query).skip(8 * page).limit(8).toArray();
             res.send(result);
-        }) 
-        
+        })
+
         // delete camp 
         app.delete('/delete/:id', verifyToken, verifyOrganizer, async (req, res) => {
             const id = req.params.id;
-            console.log(id);
-            const query = { _id: new ObjectId(id)}
+
+            const query = { _id: new ObjectId(id) }
             const result = await campCollection.deleteOne(query);
             res.send(result);
         })
@@ -192,44 +194,85 @@ async function run() {
             const count = await campCollection.estimatedDocumentCount()
             res.send({ count });
         })
-      
+
         // post new camp
         app.post('/add-camp', verifyToken, verifyOrganizer, async (req, res) => {
             const item = req.body;
-            
+
             const result = await campCollection.insertOne(item);
             res.send(result);
         });
         // update camp
-        app.put('/update-camp/:id', verifyToken,  async (req, res) => {
+        app.put('/update-camp/:id', verifyToken, async (req, res) => {
             const item = req.body;
             const id = req.params.id;
-            console.log(item);
+
             const filter = { _id: new ObjectId(id) }
             const options = { upsert: true };
             const updatedDoc = {
                 $set: {
-                      healthcareProfessional:item.healthcareProfessional
-                    , location:item.location
-                    , dateTime:item.dateTime
-                    , campFees:item.campFees
-                    , image:item.image
-                    , campName:item.campName
-                    , description:item.description
+                    healthcareProfessional: item.healthcareProfessional
+                    , location: item.location
+                    , dateTime: item.dateTime
+                    , campFees: item.campFees
+                    , image: item.image
+                    , campName: item.campName
+                    , description: item.description
+                    , participantCount: item.participantCount
+
+
                 }
             }
-  
-            const result = await campCollection.updateOne(filter,updatedDoc,options);
+
+            const result = await campCollection.updateOne(filter, updatedDoc, options);
             res.send(result);
         });
         // get single card details
         app.get('/details/:id', async (req, res) => {
             const id = req.params.id;
-           
+
             const query = { _id: new ObjectId(id) }
             const result = await campCollection.findOne(query);
             res.send(result);
         })
+
+
+        //----------Payment------------------//
+        // create-payment-intent
+        app.post('/create-payment-intent', verifyToken, async (req, res) => {
+            const price = req.body.campFees
+
+            const priceInCent = parseFloat(price) * 100
+            if (!price || priceInCent < 1) return
+            // generate clientSecret
+            const { client_secret } = await stripe.paymentIntents.create({
+                amount: priceInCent,
+                currency: 'usd',
+                // In the latest version of the API, specifying the `automatic_payment_methods` parameter is optional because Stripe enables its functionality by default.
+                automatic_payment_methods: {
+                    enabled: true,
+                },
+            })
+            // send client secret as response
+            res.send({ clientSecret: client_secret })
+        })
+
+        // payment add to database
+
+        app.post('/payment', async (req, res) => {
+            const item = req.body;
+
+            const result = await paymentCollection.insertOne(item);
+            res.send(result);
+
+        })
+        // get payments
+        app.get('/payment/:email', verifyToken, async (req, res) => {
+            const email = req.params.email;
+            const query = { email: email };
+            const result = await paymentCollection.find(query).toArray();
+            res.send(result);
+        });
 
 
         //-----------------Feedback -------------------//
@@ -264,10 +307,10 @@ async function run() {
 
             const result = await participantCollection.find(query).skip(8 * page).limit(8).toArray();
             res.send(result);
-        }) 
+        })
 
         //get participant
-        app.get('/participant/:email',verifyToken, async (req, res) => {
+        app.get('/participants/:email', verifyToken, async (req, res) => {
             const email = req.params.email;
             const query = { email: email };
             const result = await participantCollection.find(query).toArray();
@@ -296,20 +339,20 @@ async function run() {
 
             const updatedDoc = {
                 $set: {
-                    payment_status:item.payment_status ,
+                    payment_status: item.payment_status,
 
-                    confirmation_status:item.confirmation_status
+                    confirmation_status: item.confirmation_status
                 }
             }
 
             const result = await participantCollection.updateOne(filter, updatedDoc);
             res.send(result);
         });
-  // delete participant 
+        // delete participant 
         app.delete('/delete-participant/:id', verifyToken, verifyOrganizer, async (req, res) => {
             const id = req.params.id;
-            console.log(id);
-            const query = { _id: new ObjectId(id)}
+
+            const query = { _id: new ObjectId(id) }
             const result = await participantCollection.deleteOne(query);
             res.send(result);
         })
