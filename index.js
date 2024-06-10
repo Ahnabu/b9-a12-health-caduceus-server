@@ -42,6 +42,11 @@ async function run() {
         const participantCollection = client.db('mediDB').collection('participant')
 
 
+        app.get('/', (req, res) => {
+    res.send('running')
+})
+
+
         // jwt related api
         app.post('/jwt', async (req, res) => {
             const user = req.body;
@@ -274,6 +279,41 @@ async function run() {
             res.send(result);
         });
 
+        //get payment for analytics
+        app.get('/payment-stat/:email', verifyToken, async (req, res) => {
+            const { email } = req.params.email
+            const paymentDetails = await paymentCollection
+                .find(
+                    { 'email': email },
+                    {
+                        projection: {
+                            campName: 1,
+                            campFees: 1,
+                        },
+                    }
+                )
+                .toArray()
+
+            const totalPrice = paymentDetails.reduce(
+                (sum, payment) => sum + payment.campFees,
+                0
+            )
+          
+
+            const chartData = paymentDetails.map(payment => {
+                const data = [payment?.campName, payment?.campFees]
+                return data
+            })
+            // chartData.unshift(['Day', 'Sales'])
+            // chartData.splice(0, 0, ['Day', 'Sales'])
+
+       
+            res.send({
+                totalPayments: paymentCollection.length,
+                totalPrice,
+                chartData,
+            })
+        })
 
         //-----------------Feedback -------------------//
 
@@ -358,8 +398,8 @@ async function run() {
         })
 
         // Send a ping to confirm a successful connection
-        await client.db("Organizer").command({ ping: 1 });
-        console.log("Pinged your deployment. You successfully connected to MongoDB!");
+        // await client.db("Organizer").command({ ping: 1 });
+        // console.log("Pinged your deployment. You successfully connected to MongoDB!");
     } finally {
         // Ensures that the client will close when you finish/error
         // await client.close();
