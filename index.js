@@ -8,8 +8,8 @@ app.use(
     cors({
         origin: [
             "http://localhost:5173",
-            "b9-a12-health-caduceus.web.app",
-            "b9-a12-health-caduceus.firebaseapp.com",
+            "https://b9-a12-health-caduceus.web.app",
+            "https://b9-a12-health-caduceus.firebaseapp.com",
 
         ],
         credentials: true,
@@ -182,7 +182,7 @@ async function run() {
             let query = {}
             if (filter) query = { [sorted]: { $regex: filter, $options: 'i' } }
 
-            const result = await campCollection.find(query).skip(8 * page).limit(8).toArray();
+            const result = await campCollection.find(query).skip(10 * page).limit(8).toArray();
             res.send(result);
         })
 
@@ -345,7 +345,7 @@ async function run() {
             let query = {}
             if (filter) query = { [sorted]: { $regex: filter, $options: 'i' } }
 
-            const result = await participantCollection.find(query).skip(8 * page).limit(8).toArray();
+            const result = await participantCollection.find(query).skip(10 * page).limit(8).toArray();
             res.send(result);
         })
 
